@@ -2,7 +2,7 @@ name: Send News Email Cron Job
 
 on:
   schedule:
-    - cron: '0 8,20 * * *'  # Triggers at 8:00 AM and 8:00 PM UTC
+    - cron: '0 13,1 * * *'  # Triggers at 8:00 AM and 8:00 PM ET
   workflow_dispatch:  # Allows manual runs for testing
 
 jobs:
