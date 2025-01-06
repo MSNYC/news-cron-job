@@ -1,0 +1,23 @@
+name: Send News Email Cron Job
+
+on:
+  schedule:
+    - cron: '0 8,20 * * *'  # Triggers at 8:00 AM and 8:00 PM UTC
+  workflow_dispatch:  # Allows manual runs for testing
+
+jobs:
+  send_news_email:
+    runs-on: ubuntu-latest  # The environment to run the job
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v3
+
+      - name: Install dependencies (if using Python)
+        run: |
+          pip install -r requirements.txt
+
+      - name: Run cron script
+        run: |
+          python run_cron.py
+        env:
+          MY_SECRET_API_KEY: ${{ secrets.MY_SECRET_API_KEY }}  # Securely pass API key
