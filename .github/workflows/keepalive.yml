@@ -1,0 +1,34 @@
+on:
+  schedule:
+    - cron: '17 4 * * *' # daily
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  keepalive:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Only run every 50 days
+        id: gate
+        run: |
+          anchor="2026-02-14" # pick any fixed UTC date
+          now_s=$(date -u +%s)
+          anchor_s=$(date -u -d "$anchor" +%s)
+          days=$(( (now_s - anchor_s) / 86400 ))
+          if (( days % 50 != 0 )); then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "skip=false" >> "$GITHUB_OUTPUT"
+
+      - name: Empty commit + push
+        if: steps.gate.outputs.skip == 'false'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit --allow-empty -m "chore: keepalive [skip ci] $(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+          git push
