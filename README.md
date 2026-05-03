@@ -4,7 +4,7 @@ Automated scheduler for the [NewsMonitor](https://github.com/MSNYC/NewsMonitor) 
 
 ## Overview
 
-This repository contains a simple Python script that triggers the NewsMonitor serverless function on Vercel. It runs on a cron schedule via GitHub Actions, sending GET requests to the Vercel endpoint at 8 AM and 8 PM ET.
+This repository contains a small Python script that triggers the NewsMonitor serverless function on Vercel. It runs on a cron schedule via GitHub Actions, sending GET requests to the Vercel endpoint at 8 AM and 8 PM ET.
 
 ## Architecture
 
@@ -46,7 +46,7 @@ cd news-cron-job
 
 ### 3. Update Vercel URL (if needed)
 
-If your NewsMonitor deployment URL is different, edit `run_cron.py`:
+If your NewsMonitor deployment URL is different, edit `run_cron.py` or set a `VERCEL_URL` environment variable:
 
 ```python
 VERCEL_URL = "https://your-deployment-url.vercel.app/api/send-news"
@@ -73,6 +73,7 @@ The script includes robust error handling:
 - **120-second timeout** per request (allows Vercel cold starts)
 - Handles connection errors, timeouts, and HTTP failures
 - Exits with proper status codes for GitHub Actions monitoring
+- Avoids printing response bodies to public Actions logs
 
 ### Manual Testing
 
@@ -86,7 +87,7 @@ You can manually trigger the workflow:
 
 - **`run_cron.py`** - Main script that sends HTTP request to Vercel
 - **`.github/workflows/cron.yml`** - GitHub Actions workflow configuration
-- **`requirements.txt`** - Python dependencies (`requests`)
+- No third-party Python dependencies required
 
 ## Customization
 
@@ -134,7 +135,7 @@ If all retries fail, the workflow will exit with status code 1, and GitHub will 
 
 ## Cost
 
-**$0/month** - GitHub Actions provides 2,000 free minutes/month for public repositories and 500 minutes/month for private repositories. This cron job uses ~2 minutes/month.
+For standard GitHub-hosted runners, GitHub Actions usage is free in public repositories. Private repositories use the account plan's monthly Actions quota. This cron job should use very little time either way, but public visibility is the clearest way to keep runner cost at $0.
 
 ## Troubleshooting
 
@@ -143,6 +144,7 @@ If all retries fail, the workflow will exit with status code 1, and GitHub will 
 - Ensure GitHub Actions is enabled in repository settings
 - Check that the cron schedule is correct for your timezone
 - GitHub Actions may have up to 10-minute delays during high load
+- Public repository scheduled workflows are automatically disabled after 60 days with no repository activity
 
 ### Getting 403 Forbidden errors?
 
@@ -167,6 +169,9 @@ If all retries fail, the workflow will exit with status code 1, and GitHub will 
 - ✅ No credentials in code
 - ✅ `.env` files ignored by git
 - ✅ Uses environment variables exclusively
+- ✅ Workflow runs with read-only repository permissions
+- ✅ Checkout credentials are not persisted
+- ✅ Failure logs do not print response bodies from the remote endpoint
 
 ## Related Projects
 

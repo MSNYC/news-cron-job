@@ -1,51 +1,57 @@
-import requests
 import os
 import time
+import urllib.error
+import urllib.request
 
-# Load API key from environment variables (to avoid hardcoding it in the script)
+# Load configuration from environment variables so nothing sensitive is stored in git.
 API_KEY = os.getenv('MY_SECRET_API_KEY')
-VERCEL_URL = "https://news-monitor-five.vercel.app/api/send-news"  # Your Vercel endpoint
+VERCEL_URL = os.getenv(
+    'VERCEL_URL',
+    'https://news-monitor-five.vercel.app/api/send-news',
+)
+MAX_RETRIES = 3
+TIMEOUT_SECONDS = 120
+RETRY_DELAY_SECONDS = 30
 
 def send_request():
-    headers = {"X-API-KEY": API_KEY}
+    if not API_KEY:
+        print("Missing required MY_SECRET_API_KEY secret.")
+        return False
 
-    # Retry logic to handle Render free tier spin-up time
-    max_retries = 3
-    timeout = 120  # 2 minutes timeout to allow service to wake up
+    request = urllib.request.Request(
+        VERCEL_URL,
+        headers={"X-API-KEY": API_KEY},
+        method="GET",
+    )
 
-    for attempt in range(1, max_retries + 1):
+    for attempt in range(1, MAX_RETRIES + 1):
         try:
-            print(f"Attempt {attempt}/{max_retries}: Sending request to {VERCEL_URL}")
-            response = requests.get(VERCEL_URL, headers=headers, timeout=timeout)
+            print(f"Attempt {attempt}/{MAX_RETRIES}: Sending request to {VERCEL_URL}")
+            with urllib.request.urlopen(request, timeout=TIMEOUT_SECONDS) as response:
+                status_code = response.getcode()
 
-            if response.status_code == 200:
+            if status_code == 200:
                 print("News email triggered successfully!")
                 return True
-            else:
-                print(f"Failed with status code {response.status_code}: {response.text}")
+            print(f"Request failed with status code {status_code}.")
 
-        except requests.exceptions.Timeout:
-            print(f"Attempt {attempt} timed out after {timeout} seconds")
-            if attempt < max_retries:
-                wait_time = 30
-                print(f"Waiting {wait_time} seconds before retry...")
-                time.sleep(wait_time)
+        except TimeoutError:
+            print(f"Attempt {attempt} timed out after {TIMEOUT_SECONDS} seconds.")
+        except urllib.error.HTTPError as error:
+            print(f"Attempt {attempt} failed with HTTP {error.code}.")
+        except urllib.error.URLError as error:
+            print(f"Attempt {attempt} connection error: {error.reason}")
+        except Exception as error:
+            print(f"Attempt {attempt} unexpected error: {error}")
 
-        except requests.exceptions.ConnectionError as e:
-            print(f"Attempt {attempt} connection error: {str(e)}")
-            if attempt < max_retries:
-                wait_time = 30
-                print(f"Waiting {wait_time} seconds before retry...")
-                time.sleep(wait_time)
+        if attempt < MAX_RETRIES:
+            print(f"Waiting {RETRY_DELAY_SECONDS} seconds before retry...")
+            time.sleep(RETRY_DELAY_SECONDS)
 
-        except Exception as e:
-            print(f"Attempt {attempt} unexpected error: {str(e)}")
-            if attempt < max_retries:
-                wait_time = 30
-                print(f"Waiting {wait_time} seconds before retry...")
-                time.sleep(wait_time)
-
-    print(f"All {max_retries} attempts failed. The Render service may be down or taking too long to wake up.")
+    print(
+        f"All {MAX_RETRIES} attempts failed. "
+        "The endpoint may be down or taking too long to respond."
+    )
     return False
 
 if __name__ == "__main__":
